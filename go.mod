@@ -4,12 +4,12 @@ require (
 	github.com/aws/aws-sdk-go v1.40.29
 	github.com/container-storage-interface/spec v1.5.0
 	github.com/golang/mock v1.4.4
+	github.com/google/uuid v1.1.2
 	github.com/kubernetes-csi/csi-test v1.1.1
 	github.com/mitchellh/go-ps v0.0.0-20170309133038-4fdf99ab2936
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1
 	google.golang.org/grpc v1.38.0
-	github.com/google/uuid v1.1.2
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v0.22.2
@@ -34,7 +34,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
-	github.com/google/uuid v1.1.2 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/imdario/mergo v0.3.5 // indirect
