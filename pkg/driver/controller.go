@@ -19,12 +19,13 @@ package driver
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"os"
 	"path"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/kubernetes-sigs/aws-efs-csi-driver/pkg/cloud"
@@ -35,6 +36,7 @@ import (
 
 const (
 	AccessPointMode       = "efs-ap"
+	AccessPointID         = "accessPointId"
 	AzName                = "az"
 	BasePath              = "basePath"
 	DefaultGidMin         = 50000
@@ -93,6 +95,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	}
 
 	var (
+		accessPointId    *string
 		azName           string
 		basePath         string
 		err              error
@@ -195,6 +198,11 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 		}
 	}
 
+	// Check if using single Access Point
+	if value, ok := volumeParams[AccessPointID]; ok {
+		accessPointId = &value
+	}
+
 	// Assign default GID ranges if not provided
 	if gidMin == 0 && gidMax == 0 {
 		gidMin = DefaultGidMin
@@ -284,16 +292,20 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	accessPointsOptions.Gid = int64(gid)
 	accessPointsOptions.DirectoryPath = rootDir
 
-	accessPointId, err := localCloud.CreateAccessPoint(ctx, volName, accessPointsOptions)
-	if err != nil {
-		d.gidAllocator.releaseGid(accessPointsOptions.FileSystemId, gid)
-		if err == cloud.ErrAccessDenied {
-			return nil, status.Errorf(codes.Unauthenticated, "Access Denied. Please ensure you have the right AWS permissions: %v", err)
+	if accessPointId == nil {
+		newAccessPointId, err := localCloud.CreateAccessPoint(ctx, volName, accessPointsOptions)
+		if err != nil {
+			d.gidAllocator.releaseGid(accessPointsOptions.FileSystemId, gid)
+			if err == cloud.ErrAccessDenied {
+				return nil, status.Errorf(codes.Unauthenticated, "Access Denied. Please ensure you have the right AWS permissions: %v", err)
+			}
+			if err == cloud.ErrAlreadyExists {
+				return nil, status.Errorf(codes.AlreadyExists, "Access Point already exists")
+			}
+			return nil, status.Errorf(codes.Internal, "Failed to create Access point in File System %v : %v", accessPointsOptions.FileSystemId, err)
 		}
-		if err == cloud.ErrAlreadyExists {
-			return nil, status.Errorf(codes.AlreadyExists, "Access Point already exists")
-		}
-		return nil, status.Errorf(codes.Internal, "Failed to create Access point in File System %v : %v", accessPointsOptions.FileSystemId, err)
+
+		accessPointId = &newAccessPointId.AccessPointId
 	}
 
 	volContext := map[string]string{}
@@ -311,7 +323,7 @@ func (d *Driver) CreateVolume(ctx context.Context, req *csi.CreateVolumeRequest)
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			CapacityBytes: volSize,
-			VolumeId:      accessPointsOptions.FileSystemId + "::" + accessPointId.AccessPointId,
+			VolumeId:      accessPointsOptions.FileSystemId + "::" + *accessPointId,
 			VolumeContext: volContext,
 		},
 	}, nil

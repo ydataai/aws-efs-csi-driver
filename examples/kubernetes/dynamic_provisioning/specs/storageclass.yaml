@@ -4,6 +4,7 @@ metadata:
   name: efs-sc
 provisioner: efs.csi.aws.com
 parameters:
+  accessPointID: fsap-0024a40ac730a6cc8 # optional
   provisioningMode: efs-ap
   fileSystemId: fs-92107410
   directoryPerms: "700"
