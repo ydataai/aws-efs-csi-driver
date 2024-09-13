@@ -40,11 +40,15 @@ The following CSI interfaces are implemented:
 | subPathPattern        |        | `/${.PV.name}`  | true     | The template used to construct the subPath under which each of the access points created under Dynamic Provisioning. Can be made up of fixed strings and limited variables, is akin to the 'subPathPattern' variable on the [nfs-subdir-external-provisioner](https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner) chart. Supports `.PVC.name`,`.PVC.namespace` and `.PV.name` |
 | ensureUniqueDirectory |        | true            | true     | **NOTE: Only set this to false if you're sure this is the behaviour you want**.<br/> Used when dynamic provisioning is enabled, if set to true, appends a UUID to the pattern specified in `subPathPattern` to ensure that access points will not accidentally point at the same directory.                                                                                               |
 | az                    |        | ""              | true     | Used for cross-account mount. `az` under storage class parameter is optional. If specified, mount target associated with the az will be used for cross-account mount. If not specified, a random mount target will be picked for cross account mount                                                                                                                                      |
+
 **Notes**:
 * Custom Posix group Id range for Access Point root directory must include both `gidRangeStart` and `gidRangeEnd` parameters. These parameters are optional only if both are omitted. If you specify one, the other becomes mandatory.
 * When using a custom Posix group ID range, there is a possibility for the driver to run out of available POSIX group Ids. We suggest ensuring custom group ID range is large enough or create a new storage class with a new file system to provision additional volumes. 
 * `az` under storage class parameter is not be confused with efs-utils mount option `az`. The `az` mount option is used for cross-az mount or efs one zone file system mount within the same aws account as the cluster.
-
+* Using dynamic provisioning, [user identity enforcement]((https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html#enforce-identity-access-points)) is always applied.
+ * When user enforcement is enabled, Amazon EFS replaces the NFS client's user and group IDs with the identity configured on the access point for all file system operations.
+ * The uid/gid configured on the access point is either the uid/gid specified in the storage class, a value in the gidRangeStart-gidRangeEnd (used as both uid/gid) specified in the storage class, or is a value selected by the driver is no uid/gid or gidRange is specified.
+ * We suggest using [static provisioning](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/examples/kubernetes/static_provisioning/README.md) if you do not wish to use user identity enforcement.
 ### Encryption In Transit
 One of the advantages of using EFS is that it provides [encryption in transit](https://aws.amazon.com/blogs/aws/new-encryption-of-data-in-transit-for-amazon-efs/) support using TLS. Using encryption in transit, data will be encrypted during its transition over the network to the EFS service. This provides an extra layer of defence-in-depth for applications that requires strict security compliance.
 
@@ -124,6 +128,11 @@ Alternatively, you could also install the driver using helm:
 helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/
 helm repo update
 helm upgrade --install aws-efs-csi-driver --namespace kube-system aws-efs-csi-driver/aws-efs-csi-driver
+```
+
+To force the efs-csi-driver to use FIPS, you can add an argument to the helm upgrade command:
+```
+helm upgrade --install aws-efs-csi-driver --namespace kube-system aws-efs-csi-driver/aws-efs-csi-driver --set useFips=true
 ```
 
 ### Examples
