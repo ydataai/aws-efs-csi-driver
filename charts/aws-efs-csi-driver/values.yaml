@@ -132,11 +132,14 @@ storageClasses: []
 #   mountOptions:
 #   - tls
 #   parameters:
+#     accessPointID: fsap-0024a40ac730a6cc8
 #     provisioningMode: efs-ap
 #     fileSystemId: fs-1122aabb
 #     directoryPerms: "700"
 #     gidRangeStart: "1000"
 #     gidRangeEnd: "2000"
 #     basePath: "/dynamic_provisioning"
+#     subPathPattern: "/subPath"
+#     ensureUniqueDirectory: true
 #   reclaimPolicy: Delete
 #   volumeBindingMode: Immediate
